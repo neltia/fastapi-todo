@@ -2,8 +2,10 @@
 
 ### Preferences
 
-- active venv
+- settings
+    - python: ver. 3.10
 
+- active venv
 <pre>
 python -m venv .venv
 .venv\Scripts\activate

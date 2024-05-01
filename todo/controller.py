@@ -1,12 +1,17 @@
 from fastapi import APIRouter, Path
 from fastapi import HTTPException
+from fastapi import Depends
 from todo.model import TodoItem
+from common.depends.auth_depends import api_key_required
 
-todo_router = APIRouter()
+# todo_router = APIRouter()
+todo_router = APIRouter(dependencies=[Depends(api_key_required)])
 todo_list = []
 
 
 @todo_router.post("/todo", status_code=201)
+# 특정 데코레이터에만 적용
+# @todo_router.post("/todo", status_code=201, dependencies=[Depends(api_key_required)])
 async def post(todo: TodoItem) -> dict:
     todo_list.append(todo)
     return {"message": "success"}
