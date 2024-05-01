@@ -1,5 +1,6 @@
 import uvicorn
 from fastapi import FastAPI
+from auth.controller import auth_router
 from todo.controller import todo_router
 
 # main app init
@@ -11,6 +12,7 @@ app = FastAPI(
 )
 
 # route add
+app.include_router(auth_router)
 app.include_router(todo_router)
 
 # app run as debug

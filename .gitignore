@@ -1,8 +1,11 @@
+# cache
+__pycache__/
+
 # virutalenv
 .venv
 
-# cache
-__pycache__/
+# config
+.env
 
 # tmp
 error_handler.py
