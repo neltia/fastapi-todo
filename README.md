@@ -28,4 +28,4 @@ python main.py
 
 ### Manual
 /verify
-- api_key: Key to use API issued by unkey (enter key value, not keyId)
+- x-api_key: Key to use API issued by unkey (enter key value, not keyId)
