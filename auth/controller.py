@@ -1,47 +1,60 @@
 from typing import Dict, Optional
-from fastapi import Header
-from fastapi import APIRouter
+from fastapi import Header, APIRouter, Depends
 from fastapi import HTTPException
-import unkey
-import os
-from dotenv import load_dotenv
+from fastapi.security import APIKeyHeader
+from fastapi import Security
+from auth.model import api_key_create
+from auth.service import is_key_verify, create_api_key
+
+from common.models.response import ResponseResult
+from common.models.enums import ResponseCodeEnum
 
 
-load_dotenv()
 auth_router = APIRouter()
 
 
-async def is_key_verify(request_key: str):
-    unkey_root_key = os.environ["UNKEY_ROOT_KEY"]
-    unkey_api_id = os.environ["UNKEY_API_ID"]
-
-    client = unkey.Client(api_key=unkey_root_key)
-    await client.start()
-    result = await client.keys.verify_key(key=request_key, api_id=unkey_api_id)
-
-    if result.is_ok:
-        result_data = result._value.to_dict()
-        return result_data["valid"], result_data["code"]
-    else:
-        return False, result.unwrap_err()
+# 관리자 권한 키 확인
+async def authorize_key_required(authorize_key=Security(APIKeyHeader(name="Authorization"))):
+    # 헤더에 키 값이 없는 경우 확인
+    if authorize_key is None or authorize_key == "":
+        raise HTTPException(status_code=401, detail="not found key")
+    return authorize_key
 
 
-@auth_router.get("/verify")
-async def protected_route(
-    *,
-    x_api_key: str = Header(None),
-) -> Dict[str, Optional[str]]:
+# 키 인증 여부 확인
+@auth_router.get("/verify", response_model=ResponseResult, response_model_exclude_none=True)
+async def protected_route(x_api_key: str = Header(None)) -> Dict[str, Optional[str]]:
+    status_code = ResponseCodeEnum.SUCCESS
+
     if x_api_key is None:
-        status_code = 400
+        status_code = ResponseCodeEnum.INVALID_PARAM
         error_msg = "not found key"
-        raise HTTPException(status_code=status_code, detail=error_msg)
+        result = ResponseResult(result_code=status_code, error_msg=error_msg)
+        return result
 
-    result_code, result_msg = await is_key_verify(request_key=x_api_key)
-    # print(result_msg)
+    res_code, res_msg = await is_key_verify(request_key=x_api_key)
+    if not res_code:
+        status_code = ResponseCodeEnum.UNAUTHORIZED
+        msg = "unvalid key"
+        result = ResponseResult(result_code=status_code, result_msg=msg)
+        return result
 
-    if result_code:
-        return {"message": "valid"}
-    else:
-        status_code = 401
-        error_msg = "unvalid key"
-        raise HTTPException(status_code=status_code, detail=error_msg)
+    msg = "valid"
+    result = ResponseResult(result_code=status_code, result_msg=msg)
+    return result
+
+
+# 새 API 키 생성
+@auth_router.post("/token", status_code=201, dependencies=[Depends(authorize_key_required)])
+async def token_generate(api_key_create: api_key_create, authorize_key: str = Depends(authorize_key_required)) -> dict:
+    status_code = ResponseCodeEnum.SUCCESS
+
+    res_code, res_msg = await create_api_key(authorize_key, api_key_create)
+    if not res_code:
+        status_code = ResponseCodeEnum.UNAUTHORIZED
+        msg = "unvalid key"
+        result = ResponseResult(result_code=status_code, result_msg=msg)
+        return result
+
+    result = ResponseResult(result_code=status_code, result_msg=res_msg)
+    return result

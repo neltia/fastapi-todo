@@ -1,5 +1,6 @@
 import uvicorn
 from fastapi import FastAPI
+from common.handlers.error_handler import setup_exception_handlers
 from auth.controller import auth_router
 from todo.controller import todo_router
 
@@ -10,6 +11,9 @@ app = FastAPI(
     version="0.0.1",
     docs_url="/docs"
 )
+
+# error handler
+setup_exception_handlers(app)
 
 # route add
 app.include_router(auth_router)
